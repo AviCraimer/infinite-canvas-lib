@@ -1,0 +1,19 @@
+{
+    "name": "infinite-canvas-lib",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "preview": "vite preview",
+        "test": "vitest",
+        "ts-watch": "tsc -w",
+        "ts": "tsc"
+    },
+    "devDependencies": {
+        "typescript": "~5.8.3",
+        "vite": "^7.0.4",
+        "vitest": "^3.2.4"
+    }
+}
