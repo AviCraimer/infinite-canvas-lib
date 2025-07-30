@@ -1,10 +1,14 @@
 import { describe, expect, test } from "vitest";
 import { intFracDistance } from "./geometry";
 
-import { blockAddress } from "../InfiniteGrid/blockAddressIndex";
+import { blockAddress, BlockAddress } from "../InfiniteGrid/blockAddressIndex";
 import { intSquareRoot } from "./squareRoot";
+// -----------------------------------------------------------------------------
+// High‑precision cross‑checks using bigdecimal.js  (tests‑only dependency)
+// -----------------------------------------------------------------------------
+import { Big, MC } from "bigdecimal.js"; // dev‑only import
 
-const testBigInts = [440322088914797568354011222422244n, 873926782866405603736476003215291n];
+const testBigInts = [4403220889147975392678286692678286640568354011222422244n, 873926782866400889147560373647606926703215291n];
 
 describe("intFracDistance", () => {
     test("should calculate correct integer distances for rectilinear paths", () => {
@@ -53,6 +57,58 @@ describe("intFracDistance", () => {
             // Fractianal part calculated by intSquareRoot = 0.8366600265340756;
             // Value of standard calculation is  Math.sqrt(114) - 10 = 0.6770782520313112
             // These are too far apart.
+        });
+    });
+});
+
+// BIG DECIMAL JS Cross-Checks
+const mc60 = MC(60); // 60‑digit √‑precision
+
+/** Helper: Euclidean distance between two BlockAddresses as BigDecimal */
+function bigDistance(a: BlockAddress, b: BlockAddress) {
+    const dx = Big((b[0] - a[0]).toString());
+    const dy = Big((b[1] - a[1]).toString());
+    const dz = Big((b[2] - a[2]).toString());
+    const sumSquares = dx.pow(2).add(dy.pow(2)).add(dz.pow(2));
+    return sumSquares.sqrt(mc60); // high‑precision √  :contentReference[oaicite:0]{index=0}
+}
+describe("intFracDistance – high‑precision comparisons (bigdecimal.js)", () => {
+    const cases = [
+        {
+            name: "moderate coords (√114 ≈ 10.677…)",
+            p1: blockAddress(1n, 2n, 3n),
+            p2: blockAddress(8n, 6n, 10n),
+        },
+        {
+            name: "negative ↔ positive coords",
+            p1: blockAddress(-5n, -4n, -3n),
+            p2: blockAddress(2n, 2n, 4n),
+        },
+        {
+            name: "very large 128‑bit‑ish coords",
+            p1: blockAddress(0n, testBigInts[0], -2n * testBigInts[1]),
+            p2: blockAddress(3n * testBigInts[1], -testBigInts[0] / 3n, 5n * testBigInts[0]),
+        },
+    ];
+
+    cases.forEach(({ name, p1, p2 }) => {
+        test(`matches BigDecimal for ${name}`, () => {
+            // Library under test
+            const [intPart, fracPart] = intFracDistance(p1, p2);
+
+            // Reference value (60‑digit BigDecimal)
+            const bigDist = bigDistance(p1, p2);
+            const bigIntPart = bigDist.toBigInt(); // floor(√)
+            const bigFrac = parseFloat(
+                bigDist.subtract(Big(bigIntPart)).toString() // remainder in (0,1)
+            );
+
+            // 1) Integer part must match exactly
+            expect(intPart).toEqual(bigIntPart);
+
+            // 2) Fractional part must be very close (≤ 1 × 10⁻¹²)
+            const diff = Math.abs(fracPart - bigFrac);
+            expect(diff).toBeLessThan(1e-12);
         });
     });
 });
