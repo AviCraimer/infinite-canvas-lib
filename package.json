@@ -12,6 +12,7 @@
         "ts": "tsc"
     },
     "devDependencies": {
+        "bigdecimal.js": "^1.3.1",
         "typescript": "~5.8.3",
         "vite": "^7.0.4",
         "vitest": "^3.2.4"
