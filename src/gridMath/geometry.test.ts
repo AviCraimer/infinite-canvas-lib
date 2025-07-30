@@ -56,10 +56,6 @@ describe("intFracDistance", () => {
             expect(fractionalPart).toBeGreaterThanOrEqual(0);
             expect(fractionalPart).toBeLessThan(1);
             expect(fractionalPart).toBeCloseTo(Math.sqrt(114) - 10); // Should be close to the fractional part of the standard square root.
-            // ERROR: The expect statement above does not pass:
-            // Fractianal part calculated by intSquareRoot = 0.8366600265340756;
-            // Value of standard calculation is  Math.sqrt(114) - 10 = 0.6770782520313112
-            // These are too far apart.
         });
     });
 });
