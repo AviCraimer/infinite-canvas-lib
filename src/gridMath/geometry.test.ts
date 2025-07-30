@@ -8,7 +8,10 @@ import { intSquareRoot } from "./squareRoot";
 // -----------------------------------------------------------------------------
 import { Big, MC } from "bigdecimal.js"; // dev‑only import
 
-const testBigInts = [4403220889147975392678286692678286640568354011222422244n, 873926782866400889147560373647606926703215291n];
+const testBigInts = [
+    4403220889148891479753926782866979753926782866926782866405683540112224222444403220889147975392678286692678286640568354011222422244440322026782866405683540112224222444403220889147975392678286692678286640568354011222422244n,
+    873926782866400889147560373646400889147560373647606926703215291873926782866400889147560373647606926703215291873926782866400889147567606926703215291873926782860373647606926703215291n,
+];
 
 describe("intFracDistance", () => {
     test("should calculate correct integer distances for rectilinear paths", () => {
@@ -62,7 +65,7 @@ describe("intFracDistance", () => {
 });
 
 // BIG DECIMAL JS Cross-Checks
-const mc60 = MC(60); // 60‑digit √‑precision
+const mc60 = MC(500); // 1000‑digit √‑precision
 
 /** Helper: Euclidean distance between two BlockAddresses as BigDecimal */
 function bigDistance(a: BlockAddress, b: BlockAddress) {
