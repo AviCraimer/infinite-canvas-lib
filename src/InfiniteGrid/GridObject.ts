@@ -1,6 +1,5 @@
 import { indexToAddress, BlockIndex, addressToIndex } from "./blockAddressIndex";
 import { GridPoint } from "./GridPoint";
-import { isLocalPoint } from "./LocalPoint";
 
 export type iGridObject<D extends object> = {
     uid: string;
@@ -20,7 +19,7 @@ export class GridObject<D extends object> implements iGridObject<D> {
 
         this.uid = uid ?? crypto.randomUUID();
 
-        if (!this.validatePoints(start, end)) {
+        if (!this.validateEndPoints(start, end)) {
             throw Error("invalid grid object boundary points.");
         }
 
@@ -32,60 +31,41 @@ export class GridObject<D extends object> implements iGridObject<D> {
         this.data = data;
     }
 
-    validatePoints(start: GridPoint, end: GridPoint): boolean {
-        return isLocalPoint(start) && isLocalPoint(end) && this.pointLEq(start, end);
+    // Private method used in the constructor to validate the endpoints. For now it is just calling pointLEq, but I'm leaving in case additional validation is needed in the future.
+    // Note that the GridPoint constructor is responsible for validating that the local values.
+    private validateEndPoints(start: GridPoint, end: GridPoint): boolean {
+        return start.pointLEq(end);
     }
 
-    pointLEq(a: GridPoint, b: GridPoint): boolean {
-        const [ax, ay, az] = indexToAddress(a.blockIndex);
-        const [bx, by, bz] = indexToAddress(b.blockIndex);
-
-        const xLEq = ax <= bx;
-        const yLEq = ay <= by;
-        const zLEq = az <= bz;
-
-        const blockLEq = xLEq && yLEq && zLEq;
-
-        if (!blockLEq) {
-            return false;
-        } else {
-            const [ax, ay, az] = a.localPoint;
-            const [bx, by, bz] = b.localPoint;
-
-            const xLEq = ax <= bx;
-            const yLEq = ay <= by;
-            const zLEq = az <= bz;
-
-            const localLEq = xLEq && yLEq && zLEq;
-
-            if (!localLEq) {
-                return false;
-            }
-        }
-        return true;
-    }
     centerPoint(): GridPoint {
         return this.start.midpoint(this.end);
     }
 
-    overlapping(): Set<BlockIndex> {
+    // Gets the set of block indexes that the object overlaps.
+    // includeCenterPoint is set to false by default since this is the common use case to avoid double referencing the main block.
+    overlapping(includeCenterPoint: boolean = false): Set<BlockIndex> {
         const overlapped = new Set<BlockIndex>();
 
         /* 1 . Unpack the block addresses for the bounding AABB */
         const [sx, sy, sz] = indexToAddress(this.start.blockIndex);
         const [ex, ey, ez] = indexToAddress(this.end.blockIndex);
 
-        /* 2 . Identify the home block (centre‑point block) */
-        const homeBlock = this.centerPoint().blockIndex;
-
-        /* 3 . Iterate the closed block cube [sx … ex] × [sy … ey] × [sz … ez]   */
+        /*  Iterate the closed block cube [sx … ex] × [sy … ey] × [sz … ez]   */
+        // Note that objects should not span a large number of blocks so althrough we have a triple loop, the span traversed in each loop should be very small.
+        // TODO: Add sanity check here to ensure very large spanning objects throw an error, will require some benchmarking to determine how large to avoid.
         for (let x = sx; x <= ex; x += 1n) {
             for (let y = sy; y <= ey; y += 1n) {
                 for (let z = sz; z <= ez; z += 1n) {
                     const idx = addressToIndex([x, y, z]);
-                    if (idx !== homeBlock) overlapped.add(idx);
+                    overlapped.add(idx);
                 }
             }
+        }
+
+        if (!includeCenterPoint) {
+            /* Identify the main block (centre‑point block) */
+            const mainBlock = this.centerPoint().blockIndex;
+            overlapped.delete(mainBlock);
         }
         return overlapped;
     }

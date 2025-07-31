@@ -16,7 +16,7 @@ export const localValue = (num: number): LocalValue => {
 
 export type LocalPoint = [x: LocalValue, y: LocalValue, z: LocalValue];
 
-export const isLocalPoint = (value: unknown): value is LocalPoint => {
+export const isLocalPoint = (value: number[]): value is LocalPoint => {
     if (Array.isArray(value) && value.length === 3 && value.every(isLocalValue)) {
         return true;
     } else {

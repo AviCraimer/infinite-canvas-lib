@@ -44,9 +44,8 @@ class InfiniteGrid<D extends object> {
         return this.blockLookup.get(index)!;
     }
 
+    // Inserts an object if that UID does not already exist.
     insertObject(obj: GridObject<D>) {
-        // Find the center point of the object
-
         if (!this.objectLookup.has(obj.uid)) {
             this.objectLookup.set(obj.uid, obj);
 
@@ -88,6 +87,7 @@ class InfiniteGrid<D extends object> {
             overlappingBlock.objects.overlapping.delete(obj.uid);
             this.removeBlockIfEmpty(overlappingBlock.index);
         }
+        this.objectLookup.delete(obj.uid);
         this.revMainLookup.delete(obj.uid);
         this.revOverlapLookup.delete(obj.uid);
         this.removeBlockIfEmpty(mainBlock.index);
@@ -98,5 +98,17 @@ class InfiniteGrid<D extends object> {
         if (block && block.objects.main.size === 0 && block.objects.overlapping.size === 0) {
             this.blockLookup.delete(block.index);
         }
+    }
+
+    // Updates an object by removing any existing object and inserting the new object.
+    // Note that this can be used as a version of insert that always overwrites any existing object with the same UID (while insert will never overwrite).
+    updateObject(obj: GridObject<D>): void {
+        const previous = this.objectLookup.get(obj.uid);
+
+        if (previous) {
+            this.removeObject(previous);
+        }
+
+        this.insertObject(obj);
     }
 }
