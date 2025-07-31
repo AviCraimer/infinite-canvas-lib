@@ -1,6 +1,6 @@
 // src/gridMath/geometry.ts
 import type { BlockAddress } from "../InfiniteGrid/blockAddressIndex";
-import { intSquareRoot } from "./squareRoot";
+import { divFloor, intSquareRoot } from "./arithmatic";
 
 export const MANTISSA_BITS = 53n; // size of IEEE-754 mantissa
 export const SCALE = 1n << MANTISSA_BITS; // 2^53 → exact in double
@@ -13,7 +13,7 @@ export const SCALE = 1n << MANTISSA_BITS; // 2^53 → exact in double
  * @param maxIterations safety cap (default 10).  The loop usually exits after
  *                      4–6 steps even for 1000-bit inputs; 10 is plenty.
  */
-export function intFracDistance(a: BlockAddress, b: BlockAddress, maxIterations: number = 10): [bigint, number] {
+export function intFracDistance(a: BlockAddress, b: BlockAddress, maxIterations: number = 20): [bigint, number] {
     /* ---------- 1. integer part ------------------------------------------- */
     const [ax, ay, az] = a;
     const [bx, by, bz] = b;
@@ -48,4 +48,31 @@ export function intFracDistance(a: BlockAddress, b: BlockAddress, maxIterations:
     const frac = Number(fracFixed) / Number(SCALE);
 
     return [s, frac];
+}
+
+/** midpoint of one axis  (tile₁,off₁)  &  (tile₂,off₂)  →  (tileₘ,offₘ) */
+export function midpoint1D(t1: bigint, f1: number, t2: bigint, f2: number): [bigint, number] {
+    const sumTile = t1 + t2; // bigint
+    const sumOff = f1 + f2; // 0 ≤ sumOff < 2
+
+    // integer part: ⌊(t1+t2)/2⌋
+    let midTile = divFloor(sumTile, 2n);
+
+    // fractional part: (f1+f2)/2  plus 0.5 if (t1+t2) was odd
+    let midOff = 0.5 * sumOff;
+    if ((sumTile & 1n) !== 0n) midOff += 0.5;
+
+    // normalise so that 0 ≤ midOff < 1
+    if (midOff >= 1) {
+        midOff -= 1;
+        midTile += 1n;
+    }
+
+    // guard against rare rounding case midOff === 1 due to IEEE-754
+    if (midOff >= 1) {
+        midOff = 0;
+        midTile += 1n;
+    }
+
+    return [midTile, midOff];
 }

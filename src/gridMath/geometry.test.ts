@@ -1,12 +1,25 @@
 import { describe, expect, test } from "vitest";
-import { intFracDistance } from "./geometry";
+import { intFracDistance, midpoint1D } from "./geometry";
 
 import { blockAddress, BlockAddress } from "../InfiniteGrid/blockAddressIndex";
-import { intSquareRoot } from "./squareRoot";
+import { intSquareRoot } from "./arithmatic";
 // -----------------------------------------------------------------------------
 // High‑precision cross‑checks using bigdecimal.js  (tests‑only dependency)
 // -----------------------------------------------------------------------------
-import { Big, MC } from "bigdecimal.js"; // dev‑only import
+import { Big, MC, RoundingMode } from "bigdecimal.js"; // dev‑only import
+
+// HELPERS FOR BIG DECIMAL
+/* Helper: (tile, frac) → BigDecimal world-coordinate */
+const bigCoord = (t: bigint, f: number) => Big(t.toString()).add(Big(f.toString()));
+
+/* Decompose BigDecimal → (tile, frac)  with 0 ≤ frac < 1 */
+function bigDecompose(x: any): [bigint, number] {
+    // ⌊x⌋ = divide by 1 with scale 0 & RoundingMode.FLOOR
+    const intBD = x.divide(Big("1"), 0, RoundingMode.FLOOR); // BigDecimal
+    const intBig = intBD.toBigInt();
+    const fracPart = parseFloat(x.subtract(intBD).toString());
+    return [intBig, fracPart];
+}
 
 const testBigInts = [
     4403220889148891479753926782866979753926782866926782866405683540112224222444403220889147975392678286692678286640568354011222422244440322026782866405683540112224222444403220889147975392678286692678286640568354011222422244n,
@@ -108,6 +121,57 @@ describe("intFracDistance – high‑precision comparisons (bigdecimal.js)", () 
             // 2) Fractional part must be very close (≤ 1 × 10⁻¹²)
             const diff = Math.abs(fracPart - bigFrac);
             expect(diff).toBeLessThan(1e-12);
+        });
+    });
+});
+
+/* Test cases chosen to hit all thorny branches */
+const midpointCases = [
+    // same tile, no carry
+    { t1: 0n, f1: 0.2, t2: 0n, f2: 0.6 },
+
+    // carry across tile boundary (sumOff ≥ 1)
+    { t1: 0n, f1: 0.9, t2: 1n, f2: 0.9 },
+
+    // odd-sum tile so +0.5 correction, plus carry
+    { t1: 3n, f1: 0.75, t2: 4n, f2: 0.75 },
+
+    // mixed-sign tiles (-3 + 0.1,  2 + 0.2) → world coords −2.9 and 2.2
+    { t1: -3n, f1: 0.1, t2: 2n, f2: 0.2 },
+
+    // huge values (forces bigint branch, still within double frac range)
+    { t1: 1234567837457967896789678990123456789n, f1: 0.1234567890123, t2: -98766789678967896789654321098765432n, f2: 0.9876543210987 },
+];
+
+const mcPrecision = 120;
+
+describe("midpoint1D – cross-checked with BigDecimal oracle", () => {
+    midpointCases.forEach(({ t1, f1, t2, f2 }) => {
+        const name = `(${t1}+${f1}) ↔ (${t2}+${f2})`;
+        test(name, () => {
+            /* ---------- library under test ---------- */
+            const [mt, mf] = midpoint1D(t1, f1, t2, f2);
+
+            /* ---------- high-precision oracle ---------- */
+            const bigMid = bigCoord(t1, f1).add(bigCoord(t2, f2)).divide(Big("2"), mcPrecision, RoundingMode.DOWN); // (w1 + w2)/2
+            const [et, ef] = bigDecompose(bigMid);
+
+            /* ---------- assertions ---------- */
+
+            // 0 ≤ frac < 1  invariant
+            expect(mf).toBeGreaterThanOrEqual(0);
+            expect(mf).toBeLessThan(1);
+
+            // tile part exact
+            expect(mt).toBe(et);
+
+            // fractional part within 1 × 10⁻¹²
+            expect(Math.abs(mf - ef)).toBeLessThan(1e-12);
+
+            // round-trip: rebuild world coord and compare to oracle
+            const rebuilt = bigCoord(mt, mf);
+            const ulp = Big("1e-12");
+            expect(rebuilt.subtract(bigMid).abs().compareTo(ulp)).toBeLessThan(0);
         });
     });
 });

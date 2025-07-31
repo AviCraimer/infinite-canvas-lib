@@ -23,5 +23,5 @@
         "exactOptionalPropertyTypes": true,
         "forceConsistentCasingInFileNames": true
     },
-    "include": ["src"]
+    "include": ["src", "__benchmarks__"]
 }
