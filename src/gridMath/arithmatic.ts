@@ -3,14 +3,14 @@
  *
  */
 export function intSquareRoot(n: bigint): bigint {
-    if (n < 0n) throw new Error("negative");
-    if (n < 2n) return n;
-    let x = 1n << (BigInt(n.toString(2).length + 1) >> 1n); // initial power of two
-    while (true) {
-        const y = (x + n / x) >> 1n;
-        if (y >= x) return x;
-        x = y;
-    }
+  if (n < 0n) throw new Error("negative");
+  if (n < 2n) return n;
+  let x = 1n << (BigInt(n.toString(2).length + 1) >> 1n); // initial power of two
+  while (true) {
+    const y = (x + n / x) >> 1n;
+    if (y >= x) return x;
+    x = y;
+  }
 }
 
 /**
@@ -22,14 +22,21 @@ export function intSquareRoot(n: bigint): bigint {
  *
  */
 export function divFloor(n: bigint, d: bigint): bigint {
-    if (d === 0n) throw new RangeError("division by zero");
+  if (d === 0n) throw new RangeError("division by zero");
 
-    const q = n / d; // truncate-toward-0
-    const r = n % d; // remainder (same sign as n)
+  const q = n / d; // truncate-toward-0
+  const r = n % d; // remainder (same sign as n)
 
-    const nNeg = n < 0n;
-    const dNeg = d < 0n;
-    const condition = r !== 0n && nNeg !== dNeg; // there is a remainder and n and d have different signs.
+  const nNeg = n < 0n;
+  const dNeg = d < 0n;
+  const condition = r !== 0n && nNeg !== dNeg; // there is a remainder and n and d have different signs.
 
-    return condition ? q - 1n : q;
+  return condition ? q - 1n : q;
+}
+
+/** True mathematical ceiling for bigint division.
+ *  (JS / BigInt truncates toward 0;  ceil = −floor(−n/d)) */
+// TODO: Add unit tests
+export function divCeil(n: bigint, d: bigint): bigint {
+  return -divFloor(-n, d);
 }

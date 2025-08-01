@@ -3,7 +3,7 @@ import { Block } from "./gridBlock";
 import { GridObject } from "./GridObject";
 import { GridPoint } from "./GridPoint";
 
-class InfiniteGrid<D extends object> {
+export class InfiniteGrid<D extends object> {
     blockLookup: Map<BlockIndex, Block> = new Map();
     objectLookup: Map<string, GridObject<D>> = new Map();
     revMainLookup: Map<string, BlockIndex> = new Map();

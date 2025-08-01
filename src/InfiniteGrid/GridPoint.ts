@@ -1,6 +1,7 @@
 import { intFracDistance, midpoint1D, SCALE } from "../gridMath/geometry";
 import { BlockIndex, indexToAddress, type BlockAddress, addressToIndex } from "./blockAddressIndex";
 import { LocalPoint, isLocalPoint, isLocalValue, localPoint, localValue } from "./LocalPoint";
+export type AxisCoord<Ax extends "x" | "y" | "z"> = { axis: Ax; block: bigint; local: number };
 
 export class GridPoint {
     blockIndex: BlockIndex;
@@ -15,21 +16,6 @@ export class GridPoint {
         this.localPoint = localPoint;
     }
 
-    // pointLEq (compare axis-wise, blocks first, locals only when blocks equal)
-    static pointLEq(a: GridPoint, b: GridPoint): boolean {
-        const [aBx, aBy, aBz] = indexToAddress(a.blockIndex);
-        const [bBx, bBy, bBz] = indexToAddress(b.blockIndex);
-        const [aLx, aLy, aLz] = a.localPoint;
-        const [bLx, bLy, bLz] = b.localPoint;
-
-        const compareAxis = (aB: bigint, aL: number, bB: bigint, bL: number) => aB < bB || (aB === bB && aL <= bL);
-
-        return compareAxis(aBx, aLx, bBx, bLx) && compareAxis(aBy, aLy, bBy, bLy) && compareAxis(aBz, aLz, bBz, bLz);
-    }
-
-    pointLEq(b: GridPoint): boolean {
-        return GridPoint.pointLEq(this, b);
-    }
     static midpoint(p1: GridPoint, p2: GridPoint): GridPoint {
         // unpack
         const [t1x, t1y, t1z] = indexToAddress(p1.blockIndex);
@@ -53,5 +39,42 @@ export class GridPoint {
     /** Instance convenience wrapper */
     midpoint(point2: GridPoint): GridPoint {
         return GridPoint.midpoint(this, point2);
+    }
+
+    // Comparse points along each axis.
+    static pointLEq(a: GridPoint, b: GridPoint): boolean {
+        return a.axisLEq(b.x) && a.axisLEq(b.y) && a.axisLEq(b.z);
+    }
+
+    pointLEq(b: GridPoint): boolean {
+        return GridPoint.pointLEq(this, b);
+    }
+    static axisLEq<Ax extends "x" | "y" | "z">(a: AxisCoord<Ax>, b: AxisCoord<Ax>) {
+        return a.block < b.block || (a.block === b.block && a.local <= b.local);
+    }
+    axisLEq<Ax extends "x" | "y" | "z">(b: AxisCoord<Ax>) {
+        const a = this[b.axis] as AxisCoord<Ax>;
+        return GridPoint.axisLEq(a, b);
+    }
+
+    static axisGEq<Ax extends "x" | "y" | "z">(a: AxisCoord<Ax>, b: AxisCoord<Ax>) {
+        return a.block > b.block || (a.block === b.block && a.local >= b.local);
+    }
+    axisGEq<Ax extends "x" | "y" | "z">(b: AxisCoord<Ax>) {
+        const a = this[b.axis] as AxisCoord<Ax>;
+        return GridPoint.axisGEq(a, b);
+    }
+
+    get x(): AxisCoord<"x"> {
+        const [xBlock] = indexToAddress(this.blockIndex);
+        return { axis: "x", block: xBlock, local: this.localPoint[0] };
+    }
+    get y(): AxisCoord<"y"> {
+        const [, yBlock] = indexToAddress(this.blockIndex);
+        return { axis: "y", block: yBlock, local: this.localPoint[1] };
+    }
+    get z(): AxisCoord<"z"> {
+        const [, , zBlock] = indexToAddress(this.blockIndex);
+        return { axis: "z", block: zBlock, local: this.localPoint[2] };
     }
 }

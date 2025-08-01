@@ -21,3 +21,14 @@ export function indexToAddress(index: string): BlockAddress {
         throw new Error(`index "${index}" does not split into three parts.`);
     }
 }
+
+export function forEachBlock(min_: BlockAddress | BlockIndex, max_: BlockAddress | BlockIndex, fn: (addr: BlockAddress) => void) {
+    const min = Array.isArray(min_) ? min_ : indexToAddress(min_);
+    const max = Array.isArray(max_) ? max_ : indexToAddress(max_);
+
+    for (let x = min[0]; x <= max[0]; x++) {
+        for (let y = min[1]; y <= max[1]; y++) {
+            for (let z = min[2]; z <= max[2]; z++) fn([x, y, z]);
+        }
+    }
+}

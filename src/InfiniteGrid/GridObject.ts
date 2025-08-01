@@ -1,4 +1,4 @@
-import { indexToAddress, BlockIndex, addressToIndex } from "./blockAddressIndex";
+import { indexToAddress, BlockIndex, addressToIndex, forEachBlock, BlockAddress } from "./blockAddressIndex";
 import { GridPoint } from "./GridPoint";
 
 export type iGridObject<D extends object> = {
@@ -46,21 +46,10 @@ export class GridObject<D extends object> implements iGridObject<D> {
     overlapping(includeCenterPoint: boolean = false): Set<BlockIndex> {
         const overlapped = new Set<BlockIndex>();
 
-        /* 1 . Unpack the block addresses for the bounding AABB */
-        const [sx, sy, sz] = indexToAddress(this.start.blockIndex);
-        const [ex, ey, ez] = indexToAddress(this.end.blockIndex);
-
-        /*  Iterate the closed block cube [sx … ex] × [sy … ey] × [sz … ez]   */
-        // Note that objects should not span a large number of blocks so althrough we have a triple loop, the span traversed in each loop should be very small.
-        // TODO: Add sanity check here to ensure very large spanning objects throw an error, will require some benchmarking to determine how large to avoid.
-        for (let x = sx; x <= ex; x += 1n) {
-            for (let y = sy; y <= ey; y += 1n) {
-                for (let z = sz; z <= ez; z += 1n) {
-                    const idx = addressToIndex([x, y, z]);
-                    overlapped.add(idx);
-                }
-            }
-        }
+        forEachBlock(this.start.blockIndex, this.end.blockIndex, (blockAddress: BlockAddress) => {
+            const idx = addressToIndex(blockAddress);
+            overlapped.add(idx);
+        });
 
         if (!includeCenterPoint) {
             /* Identify the main block (centre‑point block) */
@@ -68,5 +57,15 @@ export class GridObject<D extends object> implements iGridObject<D> {
             overlapped.delete(mainBlock);
         }
         return overlapped;
+    }
+
+    /**
+     * Axis-aligned intersection test that works at full (block,local) precision.
+     * Assumes `start` is the min corner and `end` the max corner
+     * (already guaranteed by the constructor’s `validateEndPoints`).
+     */
+    // TODO Avi: I need to understand how this works and write unit tests.
+    intersects(other: GridObject<any>): boolean {
+        return GridPoint.axisLEq(this.start.x, other.end.x) && GridPoint.axisGEq(this.end.x, other.start.x) && GridPoint.axisLEq(this.start.y, other.end.y) && GridPoint.axisGEq(this.end.y, other.start.y) && GridPoint.axisLEq(this.start.z, other.end.z) && GridPoint.axisGEq(this.end.z, other.start.z);
     }
 }
